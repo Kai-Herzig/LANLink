@@ -97,10 +97,10 @@ export function useGames() {
     });
   }
 
-  async function addGame({ title, maxPlayers, platforms }) {
+  async function addGame({ title, maxPlayers, platforms, subscriptionAvailability }) {
     if (!user.value) throw new Error('Not logged in');
     await addDoc(collection(db, 'games'), {
-      title, maxPlayers, platforms,
+      title, maxPlayers, platforms, subscriptionAvailability,
       createdBy: user.value.uid, createdAt: serverTimestamp()
     });
   }

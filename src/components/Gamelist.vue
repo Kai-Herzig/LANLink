@@ -15,6 +15,10 @@
             Max Players
             <input v-model.number="newMaxPlayers" class="form-input" type="number" min="1" placeholder="Max players" />
           </label>
+          <label class="form-label">
+            Abo Möglichkeit (optional)
+            <input v-model="newSubscriptionAvailability" class="form-input" placeholder="z.B. Xbox Game Pass, Steam, Epic Games" />
+          </label>
           <!-- Platform selection removed -->
           <div class="form-actions">
             <button class="form-submit" type="submit">Add Game</button>
@@ -28,6 +32,7 @@
         <thead>
           <tr>
             <th>Title</th>
+            <th>Abo Möglichkeit</th>
             <th>Max Players</th>
             <!-- <th>Platform</th> -->
             <th>Votes</th>
@@ -40,6 +45,7 @@
         <tbody>
           <tr v-for="g in games" :key="g.id">
             <td class="g-title">{{ g.title }}</td>
+            <td class="g-subscription">{{ g.subscriptionAvailability || '—' }}</td>
             <td class="g-max">{{ g.maxPlayers || '?' }}</td>
             <!-- <td class="g-platforms">
               <span v-for="p in g.platforms || []" :key="p" class="pill">{{ p }}</span>
@@ -127,6 +133,7 @@ async function setCurrentGame(gameId) {
 const newTitle = ref('');
 const newMaxPlayers = ref('');
 const newPlatform = ref('');
+const newSubscriptionAvailability = ref('');
 const addMsg = ref('');
 const showAddGame = ref(false);
 
@@ -156,11 +163,13 @@ async function onAddGame() {
       title,
       maxPlayers,
       platforms: newPlatform.value ? [newPlatform.value] : [],
+      subscriptionAvailability: newSubscriptionAvailability.value.trim() || null,
     });
     addMsg.value = 'Game added!';
     newTitle.value = '';
     newMaxPlayers.value = '';
     newPlatform.value = '';
+    newSubscriptionAvailability.value = '';
     showAddGame.value = false;
   } catch (e) {
     addMsg.value = e.message || 'Error adding game.';
@@ -173,6 +182,7 @@ function cancelAddGame() {
   newTitle.value = '';
   newMaxPlayers.value = '';
   newPlatform.value = '';
+  newSubscriptionAvailability.value = '';
 }
 
 
