@@ -16,7 +16,9 @@ export function useAuth() {
       user.value = u;
       if (u) {
         const snap = await getDoc(doc(db, 'users', u.uid));
-        userProfile.value = snap.exists() ? snap.data() : null;
+        const data = snap.exists() ? snap.data() : null;
+        // If approved is missing, treat as not approved
+        userProfile.value = data ? { ...data, approved: data.approved === undefined ? false : data.approved } : null;
       } else {
         userProfile.value = null;
       }
@@ -41,8 +43,6 @@ export function useAuth() {
       const cred = await createUserWithEmailAndPassword(auth, email, password);
       await setDoc(doc(db, 'users', cred.user.uid), {
         displayName: displayName || email.split('@')[0],
-        approved: false,
-        isAdmin: false,
         createdAt: serverTimestamp(),
       });
     } catch (e) {
