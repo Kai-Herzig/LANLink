@@ -44,6 +44,8 @@ watchEffect(() => {
       <router-link to="/impressum" class="footer-link">Impressum</router-link>
       &nbsp;|&nbsp;
       <router-link to="/privacy" class="footer-link">Datenschutzerklärung / Privacy Policy</router-link>
+      &nbsp;|&nbsp;
+        <a href="https://github.com/Kai-Herzig/LANLink" class="footer-link github-link" target="_blank" rel="noopener">LANLink@GitHub</a>
     </footer>
   </div>
 </template>
