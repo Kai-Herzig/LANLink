@@ -100,7 +100,7 @@ import { useAuth } from '../composables/useAuth';
 
 const { games, installedGameIds, subscribe, addGame, deleteGame, voteForGame, removeVoteForGame, markAsInstalled, unmarkAsInstalled } = useGames();
 import { db } from '../firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc } from 'firebase/firestore';
 const { user, userProfile } = useAuth();
 
 const voteError = ref('');
@@ -115,7 +115,7 @@ async function handleVoteForGame(gameId) {
 }
 import { collection, getDocs, deleteDoc } from 'firebase/firestore';
 async function setCurrentGame(gameId) {
-  await updateDoc(doc(db, 'partyStatus', 'current'), { currentGameId: gameId });
+  await setDoc(doc(db, 'partyStatus', 'current'), { currentGameId: gameId }, { merge: true });
   // Remove all votes for this game (same as home screen)
   const votesCol = collection(db, 'games', gameId, 'votes');
   const votesSnap = await getDocs(votesCol);

@@ -19,23 +19,27 @@
         </ul>
       </div>
       <div class="user-row" v-if="userProfile?.displayName">
-        <span class="user-name">Logged in as: {{ userProfile.displayName }}</span>
+        <span class="user-name">{{ userProfile.displayName }}</span>
         <div class="ready-container">
           <span class="ready-label">{{ isReady ? 'Ready to play' : 'Not ready to play' }}</span>
           <label class="ready-switch">
-            <input type="checkbox" v-model="isReady" />
+            <input type="checkbox" :checked="isReady" :disabled="showReadyTooOld" @change="onSwitchChange" />
             <span class="slider"></span>
           </label>
         </div>
       </div>
-      <div v-if="showReadyTooOld" class="global-ready-popup">
-        <span>Your 'Ready to play' status is older than one minute. Please refresh it if you are still ready!</span>
-        <span v-if="popupCountdown > 0" class="popup-countdown">Automatically closing in {{ popupCountdown }}s...</span>
-        <div class="popup-actions">
-          <button @click="handleReadyPopupYes" class="close-popup yes">Yes</button>
-          <button @click="handleReadyPopupNo" class="close-popup no">No</button>
+      <teleport to="body">
+        <div v-if="showReadyTooOld">
+          <div class="modal-overlay"></div>
+          <div class="global-ready-popup">
+            <span>Your 'Ready to play' status is older than one hour. Are you still ready to play?</span>
+            <div class="popup-actions">
+              <button @click="handleReadyPopupYes" class="close-popup yes">Yes</button>
+              <button @click="handleReadyPopupNo" class="close-popup no">No</button>
+            </div>
+          </div>
         </div>
-      </div>
+      </teleport>
     </div>
   </nav>
 </template>
@@ -43,104 +47,49 @@
 
 
 <script setup>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { useAuth } from '../composables/useAuth';
 import { useRouter } from 'vue-router';
+import { useReadyToPlay } from '../composables/useReadyToPlay';
+
 const { userProfile, logout } = useAuth();
 const router = useRouter();
 const menuOpen = ref(false);
-import { useReadyToPlay } from '../composables/useReadyToPlay';
-const { readyToPlayAt, setReadyToPlay } = useReadyToPlay();
+
+const { readyToPlayAt, setReadyToPlay, isOlderThanOneMinute, showReadyTooOld } = useReadyToPlay();
 const isReady = ref(false);
-import { watch } from 'vue';
-const showReadyTooOld = ref(false);
-const popupCountdown = ref(10);
-let popupTimer = null;
 let popupActionInProgress = false;
 
-// Helper to check if readyToPlayAt is older than 1 minute
-function isReadyToPlayTooOld(val) {
-  if (!val) return false;
-  const now = Date.now();
-  const readyTime = typeof val === 'object' && val.seconds ? val.seconds * 1000 : new Date(val).getTime();
-  return (now - readyTime) > 60 * 1000;
-}
+
+
 
 
 // Sync isReady with readyToPlayAt from Firestore
 watch(readyToPlayAt, (val) => {
   isReady.value = !!val;
-  if (popupActionInProgress) return;
-  if (isReadyToPlayTooOld(val)) {
-    showReadyTooOld.value = true;
-    startReadyPopupTimer();
-  } else {
-    showReadyTooOld.value = false;
-    stopReadyPopupTimer();
-  }
 });
 
-// Add interval to re-check age every 5 seconds
-import { onMounted, onUnmounted } from 'vue';
-let readyCheckInterval = null;
-onMounted(() => {
-  readyCheckInterval = setInterval(() => {
-    if (popupActionInProgress) return;
-    if (isReadyToPlayTooOld(readyToPlayAt.value)) {
-      if (!showReadyTooOld.value) {
-        showReadyTooOld.value = true;
-        startReadyPopupTimer();
-      }
-    } else {
-      showReadyTooOld.value = false;
-      stopReadyPopupTimer();
-    }
-  }, 5000);
-});
-onUnmounted(() => {
-  if (readyCheckInterval) clearInterval(readyCheckInterval);
-  stopReadyPopupTimer();
-});
-
-function startReadyPopupTimer() {
-  popupCountdown.value = 10;
-  stopReadyPopupTimer();
-  popupActionInProgress = false;
-  popupTimer = setInterval(async () => {
-    popupCountdown.value--;
-    if (popupCountdown.value <= 0) {
-      popupActionInProgress = true;
-      showReadyTooOld.value = false;
-      stopReadyPopupTimer();
-      await setReadyToPlay(false);
-      setTimeout(() => { popupActionInProgress = false; }, 500);
-    }
-  }, 1000);
-}
-function stopReadyPopupTimer() {
-  if (popupTimer) {
-    clearInterval(popupTimer);
-    popupTimer = null;
+function onSwitchChange(e) {
+  if (!showReadyTooOld.value) {
+    setReadyToPlay(e.target.checked);
   }
 }
+
+
 async function handleReadyPopupYes() {
   popupActionInProgress = true;
-  stopReadyPopupTimer();
   await setReadyToPlay(true);
-  showReadyTooOld.value = false;
-  setTimeout(() => { popupActionInProgress = false; }, 500);
 }
 async function handleReadyPopupNo() {
   popupActionInProgress = true;
-  stopReadyPopupTimer();
   await setReadyToPlay(false);
-  showReadyTooOld.value = false;
-  setTimeout(() => { popupActionInProgress = false; }, 500);
 }
 
-// Update Firestore when switch is toggled
-watch(isReady, (val, oldVal) => {
-  if (val !== oldVal) setReadyToPlay(val);
+// Reset popupActionInProgress after Firestore update is reflected
+watch(readyToPlayAt, () => {
+  if (popupActionInProgress) {
+    popupActionInProgress = false;
+  }
 });
 
 function toggleMenu() {
@@ -150,6 +99,8 @@ function closeMenu() {
   menuOpen.value = false;
 }
 async function handleLogout() {
+  // Set readyToPlayAt to null before logging out
+  await setReadyToPlay(false);
   await logout();
   window.location.href = '/';
 }
@@ -158,6 +109,16 @@ async function handleLogout() {
 
 
 <style scoped>
+/* Fullscreen modal overlay for popup */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(30, 41, 59, 0.7); /* dark semi-transparent */
+  z-index: 1999;
+}
 /* Ready switch styles moved from <script setup> */
 .ready-switch {
   margin-left: 24px;
@@ -377,7 +338,7 @@ async function handleLogout() {
     color: #fff;
     padding: 24px 40px;
     border-radius: 16px;
-    z-index: 2000;
+    z-index: 2001;
     font-size: 1.2em;
     box-shadow: 0 4px 24px #0008;
     animation: fadeInOut 0.3s;

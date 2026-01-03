@@ -10,7 +10,7 @@
               <th>User ID</th>
               <th>Status</th>
               <th>Role</th>
-              <th>Ready To Play At</th>
+              <th>Ready&nbsp;since</th>
               <th>Actions</th>
           </tr>
         </thead>
@@ -157,13 +157,14 @@ async function confirmRemoveInstalled() {
   removeInstalledStatusType.value = '';
   try {
     await removeAllInstalledFromUser(dialogUser.value.id);
-    removeInstalledStatus.value = 'All installed games removed for this user.';
+    await removeAllVotesFromUser(dialogUser.value.id);
+    removeInstalledStatus.value = 'All installed games and votes removed for this user.';
     removeInstalledStatusType.value = 'success';
     setTimeout(() => {
       closeRemoveInstalledDialog();
     }, 1200);
   } catch (e) {
-    removeInstalledStatus.value = 'Failed to remove installed games: ' + (e.message || e);
+    removeInstalledStatus.value = 'Failed to remove installed games and votes: ' + (e.message || e);
     removeInstalledStatusType.value = 'error';
     removeInstalledLoading.value = false;
   }

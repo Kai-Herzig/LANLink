@@ -97,9 +97,9 @@ import { collection, getDocs, deleteDoc } from 'firebase/firestore';
 const { games, installedGameIds, subscribe: subscribeGames, voteForGame, removeVoteForGame } = useGames();
 const { currentGameTitle, subscribe: subscribeStatus } = useStatus();
 import { db } from '../firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc } from 'firebase/firestore';
 async function setCurrentGame(gameId) {
-  await updateDoc(doc(db, 'partyStatus', 'current'), { currentGameId: gameId });
+  await setDoc(doc(db, 'partyStatus', 'current'), { currentGameId: gameId }, { merge: true });
   // Remove all votes for this game
   const votesCol = collection(db, 'games', gameId, 'votes');
   const votesSnap = await getDocs(votesCol);

@@ -15,10 +15,18 @@ export function useAuth() {
     unsubscribe = onAuthStateChanged(auth, async (u) => {
       user.value = u;
       if (u) {
-        const snap = await getDoc(doc(db, 'users', u.uid));
-        const data = snap.exists() ? snap.data() : null;
-        // If approved is missing, treat as not approved
-        userProfile.value = data ? { ...data, approved: data.approved === undefined ? false : data.approved } : null;
+        const userSnap = await getDoc(doc(db, 'users', u.uid));
+        const userData = userSnap.exists() ? userSnap.data() : null;
+        let adminData = {};
+        try {
+          const adminSnap = await getDoc(doc(db, 'adminData', u.uid));
+          if (adminSnap.exists()) {
+            adminData = adminSnap.data();
+          }
+        } catch (e) {
+          // ignore if adminData does not exist
+        }
+        userProfile.value = userData ? { ...userData, ...adminData } : null;
       } else {
         userProfile.value = null;
       }

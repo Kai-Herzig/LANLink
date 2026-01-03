@@ -9,7 +9,8 @@ const router = useRouter();
 
 // Redirect to approval page if user is logged in but not approved
 watchEffect(() => {
-  if (user.value && userProfile.value && userProfile.value.approved === false) {
+  // Show approval-required if approved is false, null, or missing
+  if (user.value && userProfile.value && (userProfile.value.approved === false || userProfile.value.approved === undefined || userProfile.value.approved === null)) {
     if (router.currentRoute.value.path !== '/approval-required') {
       router.replace('/approval-required');
     }
@@ -32,7 +33,7 @@ watchEffect(() => {
       <router-view />
     </main>
     <AuthForm v-else-if="!user" />
-    <router-view v-else-if="user && userProfile && userProfile.approved === false && $route.path === '/approval-required'" />
+    <router-view v-else-if="user && userProfile && (userProfile.approved === false || userProfile.approved === undefined || userProfile.approved === null) && $route.path === '/approval-required'" />
     <footer v-if="user && userProfile && userProfile.approved" class="footer-legal">
       <span>
         LANLink v1.0.0<br>
