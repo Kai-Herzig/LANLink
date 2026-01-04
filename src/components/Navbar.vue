@@ -168,13 +168,6 @@ async function handleLogout() {
   font-weight: 500;
   font-size: 1em;
 }
-.navbar {
-  background: #1e293b;
-  box-shadow: 0 2px 8px 0 #0002;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
 .nav-content {
   display: flex;
   flex-direction: column;
@@ -230,15 +223,17 @@ async function handleLogout() {
   border: none;
   cursor: pointer;
   z-index: 110;
+  background: #2563eb;
+  padding: 0;
+  gap: 5px;
+  align-items: center;
 }
 .hamburger span {
   display: block;
-  height: 4px;
-  width: 100%;
+  height: 2px;
+  width: 60%;
+  transition: .3s;
   background: #fff;
-  margin: 5px 0;
-  border-radius: 2px;
-  transition: 0.3s;
 }
 .hamburger span.open:nth-child(1) {
   transform: translateY(9px) rotate(45deg);

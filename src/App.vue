@@ -76,7 +76,8 @@ watchEffect(() => {
   box-shadow: 0 2px 8px 0 #0002;
 }
 .main-logo {
-  height: 165px;
+  max-height: 165px;
+  max-width: 100%;
   margin: 0 auto 0.7em auto;
   display: block;
 }
