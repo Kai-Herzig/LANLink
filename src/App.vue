@@ -4,8 +4,11 @@ import { useRouter } from 'vue-router';
 import Navbar from './components/Navbar.vue';
 import AuthForm from './components/AuthForm.vue';
 import { useAuth } from './composables/useAuth';
+// Import version from package.json via Vite define
 const { user, userProfile } = useAuth();
 const router = useRouter();
+// Vite exposes env variables, so we need to define the version in vite.config.js
+const version = import.meta.env.VITE_APP_VERSION;
 
 // Redirect to approval page if user is logged in but not approved
 watchEffect(() => {
@@ -36,7 +39,7 @@ watchEffect(() => {
     <router-view v-else-if="user && userProfile && (userProfile.approved === false || userProfile.approved === undefined || userProfile.approved === null) && $route.path === '/approval-required'" />
     <footer v-if="user && userProfile && userProfile.approved" class="footer-legal">
       <span>
-        LANLink v1.0.0<br>
+        LANLink v{{ version }}<br>
         Made with ❤️ using Vue 3, Vite, and Firebase<br>
         Crafted with the help of GitHub Copilot, GPT-4.1, thoughtfully tuned prompts, and a dash of software engineering expertise.
       </span>
