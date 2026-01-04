@@ -4,12 +4,16 @@ import { useRouter } from 'vue-router';
 import Navbar from './components/Navbar.vue';
 import AuthForm from './components/AuthForm.vue';
 import { useAuth } from './composables/useAuth';
+// Import version from package.json via Vite define
 const { user, userProfile } = useAuth();
 const router = useRouter();
+// Vite exposes env variables, so we need to define the version in vite.config.js
+const version = import.meta.env.VITE_APP_VERSION;
 
 // Redirect to approval page if user is logged in but not approved
 watchEffect(() => {
-  if (user.value && userProfile.value && userProfile.value.approved === false) {
+  // Show approval-required if approved is false, null, or missing
+  if (user.value && userProfile.value && (userProfile.value.approved === false || userProfile.value.approved === undefined || userProfile.value.approved === null)) {
     if (router.currentRoute.value.path !== '/approval-required') {
       router.replace('/approval-required');
     }
@@ -32,10 +36,10 @@ watchEffect(() => {
       <router-view />
     </main>
     <AuthForm v-else-if="!user" />
-    <router-view v-else-if="user && userProfile && userProfile.approved === false && $route.path === '/approval-required'" />
+    <router-view v-else-if="user && userProfile && (userProfile.approved === false || userProfile.approved === undefined || userProfile.approved === null) && $route.path === '/approval-required'" />
     <footer v-if="user && userProfile && userProfile.approved" class="footer-legal">
       <span>
-        LANLink v1.0.0<br>
+        LANLink v{{ version }}<br>
         Made with ❤️ using Vue 3, Vite, and Firebase<br>
         Crafted with the help of GitHub Copilot, GPT-4.1, thoughtfully tuned prompts, and a dash of software engineering expertise.
       </span>
@@ -43,6 +47,8 @@ watchEffect(() => {
       <router-link to="/impressum" class="footer-link">Impressum</router-link>
       &nbsp;|&nbsp;
       <router-link to="/privacy" class="footer-link">Datenschutzerklärung / Privacy Policy</router-link>
+      &nbsp;|&nbsp;
+        <a href="https://github.com/Kai-Herzig/LANLink" class="footer-link github-link" target="_blank" rel="noopener">LANLink@GitHub</a>
     </footer>
   </div>
 </template>
@@ -73,7 +79,8 @@ watchEffect(() => {
   box-shadow: 0 2px 8px 0 #0002;
 }
 .main-logo {
-  height: 165px;
+  max-height: 165px;
+  max-width: 100%;
   margin: 0 auto 0.7em auto;
   display: block;
 }

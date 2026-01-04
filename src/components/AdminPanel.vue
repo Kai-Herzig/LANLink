@@ -6,30 +6,34 @@
       <table class="gamelist-table adminlist-table">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>User ID</th>
-            <th>Status</th>
-            <th>Role</th>
-            <th>Actions</th>
+              <th>Name</th>
+              <th>User ID</th>
+              <th>Status</th>
+              <th>Role</th>
+              <th>Ready&nbsp;since</th>
+              <th>Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="u in users" :key="u.id">
-            <td class="g-title">{{ u.displayName }}</td>
-            <td class="g-userid">{{ u.id }}</td>
-            <td class="g-status">
-              <span class="pill" :class="u.approved ? 'success' : 'danger'">{{ u.approved ? 'Approved' : 'Pending' }}</span>
-            </td>
-            <td class="g-role">
-              <span class="pill">{{ u.isAdmin ? 'Admin' : 'User' }}</span>
-            </td>
-            <td class="g-actions">
-              <button class="approve-btn" @click="toggleApproved(u.id)">{{ u.approved ? 'Revoke' : 'Approve' }}</button>
-              <button class="admin-btn" @click="toggleAdmin(u.id)">{{ u.isAdmin ? 'Demote' : 'Promote' }}</button>
-              <button class="danger" @click="openRemoveVotesDialog(u)" title="Remove all votes from this user">Remove Votes</button>
-              <button class="danger" @click="openRemoveInstalledDialog(u)" title="Remove all installed games from this user">Remove Installed</button>
-            </td>
-          </tr>
+            <tr v-for="u in users" :key="u.id">
+              <td class="g-title">{{ u.displayName }}</td>
+              <td class="g-userid">{{ u.id }}</td>
+              <td class="g-status">
+                <span class="pill" :class="u.approved ? 'success' : 'danger'">{{ u.approved ? 'Approved' : 'Pending' }}</span>
+              </td>
+              <td class="g-role">
+                <span class="pill">{{ u.isAdmin ? 'Admin' : 'User' }}</span>
+              </td>
+              <td class="g-readyToPlayAt">
+                {{ formatReadyToPlayAt(u.readyToPlayAt) }}
+              </td>
+              <td class="g-actions">
+                <button class="approve-btn" @click="toggleApproved(u.id)">{{ u.approved ? 'Revoke' : 'Approve' }}</button>
+                <button class="admin-btn" @click="toggleAdmin(u.id)">{{ u.isAdmin ? 'Demote' : 'Promote' }}</button>
+                <button class="danger" @click="openRemoveVotesDialog(u)" title="Remove all votes from this user">Remove Votes</button>
+                <button class="danger" @click="openRemoveInstalledDialog(u)" title="Remove all installed games from this user">Remove Installed</button>
+              </td>
+            </tr>
         </tbody>
       </table>
       <div v-if="showRemoveVotesDialog" class="remove-votes-dialog">
@@ -77,6 +81,19 @@ const { userProfile } = useAuth();
 const { users, subscribe, toggleApproved, toggleAdmin } = useUsers();
 const { removeAllVotesFromUser, removeAllInstalledFromUser } = useGames();
 onMounted(() => subscribe());
+
+// Helper to handle Firestore Timestamp, ISO string, or null
+function formatReadyToPlayAt(val) {
+  if (!val) return '-';
+  // Firestore Timestamp object
+  if (typeof val === 'object' && val.seconds) {
+    return new Date(val.seconds * 1000).toLocaleString();
+  }
+  // ISO string or Date string
+  const d = new Date(val);
+  if (!isNaN(d.getTime())) return d.toLocaleString();
+  return '-';
+}
 
 const showRemoveVotesDialog = ref(false);
 const showRemoveInstalledDialog = ref(false);
@@ -140,13 +157,14 @@ async function confirmRemoveInstalled() {
   removeInstalledStatusType.value = '';
   try {
     await removeAllInstalledFromUser(dialogUser.value.id);
-    removeInstalledStatus.value = 'All installed games removed for this user.';
+    await removeAllVotesFromUser(dialogUser.value.id);
+    removeInstalledStatus.value = 'All installed games and votes removed for this user.';
     removeInstalledStatusType.value = 'success';
     setTimeout(() => {
       closeRemoveInstalledDialog();
     }, 1200);
   } catch (e) {
-    removeInstalledStatus.value = 'Failed to remove installed games: ' + (e.message || e);
+    removeInstalledStatus.value = 'Failed to remove installed games and votes: ' + (e.message || e);
     removeInstalledStatusType.value = 'error';
     removeInstalledLoading.value = false;
   }

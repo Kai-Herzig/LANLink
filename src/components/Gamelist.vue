@@ -27,27 +27,88 @@
       <table class="gamelist-table">
         <thead>
           <tr>
-            <th>Title</th>
-            <th>Max Players</th>
-            <!-- <th>Platform</th> -->
-            <th>Votes</th>
+            <th @click="toggleSort('title')" style="cursor:pointer;">
+              Title
+              <span v-if="sortBy==='title'">{{ sortDir==='asc' ? '▲' : '▼' }}</span>
+            </th>
+            <th @click="toggleSort('maxPlayers')" style="cursor:pointer;">
+              Max Players
+              <span v-if="sortBy==='maxPlayers'">{{ sortDir==='asc' ? '▲' : '▼' }}</span>
+            </th>
+            <th @click="toggleSort('votesCount')" style="cursor:pointer;">
+              Votes
+              <span v-if="sortBy==='votesCount'">{{ sortDir==='asc' ? '▲' : '▼' }}</span>
+            </th>
+            <th>Vote</th>
+            <th @click="toggleSort('installations')" style="cursor:pointer;">
+              Installations
+              <span v-if="sortBy==='installations'">{{ sortDir==='asc' ? '▲' : '▼' }}</span>
+            </th>
+            <th>Installed</th>
             <th>Installed by</th>
+            <th>Ready Players</th>
+            <th>Voted By</th>
             <th>Vote</th>
             <th>Installed</th>
             <th v-if="userProfile?.isAdmin">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="g in games" :key="g.id">
+          <tr v-for="g in sortedGames" :key="g.id">
             <td class="g-title">{{ g.title }}</td>
             <td class="g-max">{{ g.maxPlayers || '?' }}</td>
             <!-- <td class="g-platforms">
               <span v-for="p in g.platforms || []" :key="p" class="pill">{{ p }}</span>
             </td> -->
             <td class="g-votes">{{ g.votesCount }}</td>
+            <td class="g-vote-btn" style="position:relative;">
+              <button
+                v-if="!hasVoted(g)"
+                @click="handleVoteForGame(g.id)"
+                title="Vote"
+                class="vote-icon grey"
+              ></button>
+              <button
+                v-else
+                @click="removeVoteForGame(g.id)"
+                title="Unvote"
+                class="vote-icon blue filled"
+              ></button>
+            </td>
+            <td class="g-installations">
+              {{ g.installedByUsers ? g.installedByUsers.length : 0 }}
+            </td>
+            <td class="g-installed-btn">
+              <button
+                v-if="user && !installedGameIds.includes(g.id)"
+                @click="markAsInstalled(g.id)"
+                title="Mark as installed"
+                class="checkmark grey"
+              ></button>
+              <button
+                v-if="user && installedGameIds.includes(g.id)"
+                @click="unmarkAsInstalled(g.id)"
+                title="Mark as not installed"
+                class="checkmark green"
+              ></button>
+            </td>
             <td class="g-installed-by">
               <span v-if="g.installedByUsers && g.installedByUsers.length" class="installed-by-list">
                 <span v-for="user in g.installedByUsers" :key="user.id" class="pill pill-grey">{{ user.displayName || user.email || user.id }}</span>
+              </span>
+              <span v-else style="color:#6b7280;">—</span>
+            </td>
+            <td class="g-ready-players">
+              <span v-if="readyPlayersForGame(g).length" class="ready-list">
+                <span v-for="user in readyPlayersForGame(g)" :key="user.id" class="pill pill-green">{{ user.displayName || user.email || user.id }}</span>
+              </span>
+              <span v-else style="color:#6b7280;">—</span>
+            </td>
+            <td class="g-voted-by">
+              <span v-if="g.votesUsers && g.votesUsers.length" class="voted-list">
+                <span v-for="user in g.votesUsers" :key="user.id" class="pill pill-green">
+                  {{ user.displayName || user.email || user.id }}
+                </span>
               </span>
               <span v-else style="color:#6b7280;">—</span>
             </td>
@@ -92,15 +153,17 @@
 
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
+import { useUsers } from '../composables/useUsers';
 
 
 import { useGames } from '../composables/useGames';
 import { useAuth } from '../composables/useAuth';
 
 const { games, installedGameIds, subscribe, addGame, deleteGame, voteForGame, removeVoteForGame, markAsInstalled, unmarkAsInstalled } = useGames();
+const { users, subscribe: subscribeUsers } = useUsers();
 import { db } from '../firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc } from 'firebase/firestore';
 const { user, userProfile } = useAuth();
 
 const voteError = ref('');
@@ -115,7 +178,7 @@ async function handleVoteForGame(gameId) {
 }
 import { collection, getDocs, deleteDoc } from 'firebase/firestore';
 async function setCurrentGame(gameId) {
-  await updateDoc(doc(db, 'partyStatus', 'current'), { currentGameId: gameId });
+  await setDoc(doc(db, 'partyStatus', 'current'), { currentGameId: gameId }, { merge: true });
   // Remove all votes for this game (same as home screen)
   const votesCol = collection(db, 'games', gameId, 'votes');
   const votesSnap = await getDocs(votesCol);
@@ -131,6 +194,33 @@ const addMsg = ref('');
 const showAddGame = ref(false);
 
 onMounted(() => subscribe());
+onMounted(() => subscribeUsers());
+// Helper to get ready players for a game (readytoplayat within 1 hour)
+function readyPlayersForGame(game) {
+  const nowMs = Date.now();
+  if (!users.value || !Array.isArray(users.value)) return [];
+  return users.value.filter(u => {
+    // Only users who are ready
+    const ts = u.readyToPlayAt;
+    if (!ts) return false;
+    let readyTime;
+    if (typeof ts?.toMillis === 'function') {
+      readyTime = ts.toMillis();
+    } else if (typeof ts === 'object' && typeof ts.seconds === 'number') {
+      readyTime = ts.seconds * 1000 + Math.floor((ts.nanoseconds || 0) / 1e6);
+    } else if (typeof ts === 'number') {
+      readyTime = ts;
+    } else if (typeof ts === 'string') {
+      readyTime = Date.parse(ts);
+    } else {
+      return false;
+    }
+    // Only if ready within last hour
+    if (nowMs - readyTime > 3600000) return false;
+    // Only if user has this game installed
+    return game.installedByUsers && game.installedByUsers.some(inst => inst.id === u.id);
+  });
+}
 
 async function onAddGame() {
   addMsg.value = '';
@@ -182,13 +272,72 @@ function hasVoted(g) {
   return g.votes.includes(user.value.uid);
 }
 
-// No local installed tracking needed; handled by composable
-onMounted(() => subscribe());
+// Sorting logic for table columns
+const sortBy = ref('title');
+const sortDir = ref('asc');
+
+function toggleSort(col) {
+  if (sortBy.value === col) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc';
+  } else {
+    sortBy.value = col;
+    sortDir.value = 'asc';
+  }
+}
+
+const sortedGames = computed(() => {
+  if (!games.value) return [];
+  const arr = [...games.value];
+  if (sortBy.value === 'title') {
+    arr.sort((a, b) => {
+      if (!a.title) return 1;
+      if (!b.title) return -1;
+      return sortDir.value === 'asc'
+        ? a.title.localeCompare(b.title)
+        : b.title.localeCompare(a.title);
+    });
+  } else if (sortBy.value === 'votesCount') {
+    arr.sort((a, b) => {
+      return sortDir.value === 'asc'
+        ? a.votesCount - b.votesCount
+        : b.votesCount - a.votesCount;
+    });
+  } else if (sortBy.value === 'maxPlayers') {
+    arr.sort((a, b) => {
+      return sortDir.value === 'asc'
+        ? (a.maxPlayers || 0) - (b.maxPlayers || 0)
+        : (b.maxPlayers || 0) - (a.maxPlayers || 0);
+    });
+  } else if (sortBy.value === 'installations') {
+    arr.sort((a, b) => {
+      const aCount = a.installedByUsers ? a.installedByUsers.length : 0;
+      const bCount = b.installedByUsers ? b.installedByUsers.length : 0;
+      return sortDir.value === 'asc' ? aCount - bCount : bCount - aCount;
+    });
+  }
+  return arr;
+});
 </script>
 
 
 
 <style scoped>
+.pill-green {
+  background: #22c55e;
+  color: #fff;
+  border-radius: 12px;
+  padding: 0.25em 0.9em;
+  font-size: 1em;
+  font-weight: 500;
+  margin-right: 0.3em;
+  display: inline-block;
+}
+.g-ready-players {
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .global-vote-error-popup {
   position: fixed;
   top: 50%;

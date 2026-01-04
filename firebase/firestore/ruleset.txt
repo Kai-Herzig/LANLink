@@ -12,26 +12,41 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function adminDoc() {
+      return get(/databases/$(database)/documents/adminData/$(request.auth.uid)).data;
+    }
+
     function isApproved() {
-      return isAuthed() && userDoc().approved == true;
+      return isAuthed() && adminDoc().approved == true;
     }
 
     function isAdmin() {
-      return isAuthed() && userDoc().isAdmin == true;
+      return isAuthed() && adminDoc().isAdmin == true;
     }
 
     // Users: allow user to read their own doc; admin can read all.
     match /users/{uid} {
       // Allow anyone to list users but only return displayName field
-      allow get: if (isApproved() && (request.resource.data.keys().hasOnly(['displayName']) || resource.data.keys().hasOnly(['displayName']))) ||
-        (request.auth == null && resource.data.keys().hasOnly(['displayName']));
+      allow get: if (isApproved() && (request.resource.data.keys().hasOnly(['displayName']) || resource.data.keys().hasOnly(['displayName'])) ||
+        (request.auth == null && resource.data.keys().hasOnly(['displayName'])));
       // Allow listing users for displayName field only, for registration
       allow list: if request.auth == null || isApproved();
       // Allow user to read their own full doc, and admin to read all
       allow read: if isAdmin() || (isAuthed() && uid == request.auth.uid);
-      // Only admin can write users; users may create their own doc at registration
-      allow create: if isAuthed() && uid == request.auth.uid;
-      allow update, delete: if isAdmin();
+      // Allow user to create or update their own doc (no isAdmin/approved fields)
+      allow create: if isAuthed() && uid == request.auth.uid &&
+        !('isAdmin' in request.resource.data) &&
+        !('approved' in request.resource.data);
+      allow update: if isAuthed() && uid == request.auth.uid &&
+        !('isAdmin' in request.resource.data) &&
+        !('approved' in request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    // Admin-only user fields
+    match /adminData/{uid} {
+      allow read: if isAdmin() || (isAuthed() && uid == request.auth.uid);
+      allow create, update, delete: if isAdmin();
     }
 
     // Games collection: approved users may read/write; writes limited to approving fields
@@ -47,7 +62,7 @@ service cloud.firestore {
           return exists(/databases/$(database)/documents/games/$(gameId)/installedBy/$(request.auth.uid));
         }
         allow create: if isApproved() && voteId == request.auth.uid && hasInstalled();
-        allow update, delete: if isApproved() && voteId == request.auth.uid && hasInstalled();
+        allow update, delete: if (isApproved() && voteId == request.auth.uid && hasInstalled()) || isAdmin();
       }
       // InstalledBy subcollection: only the user can write their own installedBy doc
       match /installedBy/{userId} {

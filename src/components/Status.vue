@@ -19,6 +19,21 @@
         </template>
       </span>
     </div>
+
+    <div class="current-game-glass ready-players-glass">
+      <span class="playing-active-text">
+        <span class="ready-badge">
+          <span class="ready-icon">⚡</span>
+          Ready Players
+        </span>
+        <span class="ready-users-list">
+          <span v-if="readyUsers.length">
+            <span v-for="user in readyUsers" :key="user.id" class="pill pill-green">{{ user.displayName || user.email || user.id }}</span>
+          </span>
+          <span v-else style="color:#6b7280;">—</span>
+        </span>
+      </span>
+    </div>
     <div v-if="userProfile?.isAdmin" class="pause-collapsible">
       <button class="pause-toggle" @click="openPauseBox" v-if="!showPauseBox">Set a break</button>
       <div v-if="showPauseBox" class="pause-box">
@@ -36,12 +51,12 @@
     <div class="top-games">
       <h4 class="top-games-title">
         <span class="trophy-icon">🏆</span>
-        Top 5 Games by Votes
+        Top 5 Games by Ready-to-Play Votes
       </h4>
       <ul class="top-games-list">
-        <li v-for="(g, idx) in topGames" :key="g.id" :class="['top-game-card', { first: g.votesCount === topGames[0]?.votesCount }]">
+        <li v-for="(g, idx) in topGames" :key="g.id" :class="['top-game-card', { first: g.readyVotesCount === topGames[0]?.readyVotesCount }]">
           <span class="rank-badge">
-            <template v-if="g.votesCount === topGames[0]?.votesCount">
+            <template v-if="g.readyVotesCount === topGames[0]?.readyVotesCount">
               <span class="crown crown-behind">👑</span>
             </template>
             <template v-else>
@@ -50,15 +65,15 @@
           </span>
           <span class="game-title">{{ g.title }}</span>
           <span class="votes-badge votes-tooltip-wrapper">
-            {{ g.votesCount }} votes
-            <span v-if="g.votesUsers && g.votesUsers.length" class="votes-tooltip">
-              <span v-for="user in g.votesUsers" :key="user.id" class="votes-tooltip-user">
+            {{ g.readyVotesCount }} ready votes
+            <span v-if="g.readyVotesUsers && g.readyVotesUsers.length" class="votes-tooltip">
+              <span v-for="user in g.readyVotesUsers" :key="user.id" class="votes-tooltip-user">
                 {{ user.displayName || user.email || user.id }}
               </span>
             </span>
           </span>
           <div class="progress-bar">
-            <div class="progress" :style="{ width: (g.votesCount / (topGames[0]?.votesCount || 1) * 100) + '%' }"></div>
+            <div class="progress" :style="{ width: (g.readyVotesCount / (topGames[0]?.readyVotesCount || 1) * 100) + '%' }"></div>
           </div>
           <button
             v-if="!hasVoted(g)"
@@ -78,6 +93,28 @@
 </template>
 
 <script setup>
+// Computed list of all users who are ready (readytoplayat within 1 hour)
+const readyUsers = computed(() => {
+  const nowMs = Date.now();
+  if (!users.value || !Array.isArray(users.value)) return [];
+  return users.value.filter(u => {
+    const ts = u.readyToPlayAt;
+    if (!ts) return false;
+    let readyTime;
+    if (typeof ts?.toMillis === 'function') {
+      readyTime = ts.toMillis();
+    } else if (typeof ts === 'object' && typeof ts.seconds === 'number') {
+      readyTime = ts.seconds * 1000 + Math.floor((ts.nanoseconds || 0) / 1e6);
+    } else if (typeof ts === 'number') {
+      readyTime = ts;
+    } else if (typeof ts === 'string') {
+      readyTime = Date.parse(ts);
+    } else {
+      return false;
+    }
+    return nowMs - readyTime <= 3600000;
+  });
+});
 // Clear both currentGameId and pauseEnd in Firestore
 async function handleClearCurrentGameAndPause() {
   try {
@@ -92,14 +129,16 @@ import { useGames } from '../composables/useGames';
 import { useStatus } from '../composables/useStatus';
 import { usePause } from '../composables/usePause';
 import { useAuth } from '../composables/useAuth';
+import { useUsers } from '../composables/useUsers';
 import { collection, getDocs, deleteDoc } from 'firebase/firestore';
 
 const { games, installedGameIds, subscribe: subscribeGames, voteForGame, removeVoteForGame } = useGames();
 const { currentGameTitle, subscribe: subscribeStatus } = useStatus();
+const { users, subscribe: subscribeUsers } = useUsers();
 import { db } from '../firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc } from 'firebase/firestore';
 async function setCurrentGame(gameId) {
-  await updateDoc(doc(db, 'partyStatus', 'current'), { currentGameId: gameId });
+  await setDoc(doc(db, 'partyStatus', 'current'), { currentGameId: gameId }, { merge: true });
   // Remove all votes for this game
   const votesCol = collection(db, 'games', gameId, 'votes');
   const votesSnap = await getDocs(votesCol);
@@ -131,11 +170,41 @@ onMounted(() => {
   subscribeGames();
   subscribeStatus();
   subscribePause();
+  subscribeUsers();
 });
 
 const topGames = computed(() => {
-  return [...games.value]
-    .sort((a, b) => b.votesCount - a.votesCount)
+  // Only consider users who are ready to play (readyToPlayAt within last hour)
+  const nowMs = Date.now();
+  const readyUsers = users.value.filter(u => {
+    const ts = u.readyToPlayAt;
+    if (!ts) return false;
+    let readyTime;
+    if (typeof ts?.toMillis === 'function') {
+      readyTime = ts.toMillis();
+    } else if (typeof ts === 'object' && typeof ts.seconds === 'number') {
+      readyTime = ts.seconds * 1000 + Math.floor((ts.nanoseconds || 0) / 1e6);
+    } else if (typeof ts === 'number') {
+      readyTime = ts;
+    } else if (typeof ts === 'string') {
+      readyTime = Date.parse(ts);
+    } else {
+      return false;
+    }
+    return nowMs - readyTime <= 3600000;
+  });
+
+  // For each game, count how many ready users have voted for it
+  const gamesWithReadyVotes = games.value.map(g => {
+    const readyVotesUsers = readyUsers.filter(u => g.votes && g.votes.includes(u.id));
+    return {
+      ...g,
+      readyVotesCount: readyVotesUsers.length,
+      readyVotesUsers,
+    };
+  });
+  return gamesWithReadyVotes
+    .sort((a, b) => b.readyVotesCount - a.readyVotesCount)
     .slice(0, 5);
 });
 
@@ -177,23 +246,69 @@ function openPauseBox() {
 </script>
 
 <style scoped>
+    .ready-players-glass {
+      /* Inherit all styles from .current-game-glass for perfect alignment */
+      margin-bottom: 2.5em;
+      margin-top: 0;
+    }
+  .ready-users-box {
+    margin-top: 1em;
+    display: flex;
+    align-items: center;
+    gap: 1.2em;
+    flex-wrap: wrap;
+  }
+  .ready-badge {
+    background: #2563eb;
+    color: #fff;
+    border-radius: 12px;
+    padding: 4px 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    font-size: 1em;
+    box-shadow: 0 2px 8px #0002;
+    gap: 0.5em;
+  }
+  .ready-icon {
+    font-size: 1.3em;
+    margin-right: 0.5em;
+    filter: drop-shadow(0 0 2px #fff8);
+  }
+  .ready-users-list {
+    display: flex;
+    gap: 0.3em;
+    flex-wrap: wrap;
+  }
+  .pill-green {
+    background: #374151;
+    color: #e5e7eb;
+    border-radius: 12px;
+    padding: 0.25em 0.9em;
+    font-size: 1em;
+    font-weight: 500;
+    margin-right: 0.3em;
+    display: inline-block;
+  }
 /* Enhanced currently playing text styles */
-.playing-active-text {
-  display: flex;
-  align-items: center;
-  gap: 1.2em;
-}
-.now-playing-badge {
-  background: #4f46e5;
-  color: #fff;
-  border-radius: 12px;
-  padding: 4px 14px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  font-size: 1em;
-  box-shadow: 0 2px 8px #0002;
-}
+  .playing-active-text {
+    display: flex;
+    align-items: center;
+    gap: 1.2em;
+    justify-content: flex-start;
+    width: 100%;
+  }
+  .now-playing-badge {
+    background: #2563eb;
+    color: #fff;
+    border-radius: 12px;
+    padding: 4px 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    font-size: 1em;
+    box-shadow: 0 2px 8px #0002;
+  }
 .game-icon {
   font-size: 1.3em;
   margin-right: 0.5em;

@@ -1,32 +1,62 @@
 // useUsers.js - Vue composable for admin user management
 import { ref, onUnmounted } from 'vue';
 import { db } from '../firebase';
-import { collection, doc, getDoc, onSnapshot, orderBy, updateDoc, query } from 'firebase/firestore';
+import { collection, doc, getDoc, onSnapshot, orderBy, updateDoc, query, setDoc } from 'firebase/firestore';
 
 export function useUsers() {
   const users = ref([]);
-  let unsubscribe = null;
+  let unsubscribeUsers = null;
+  let unsubscribeAdminData = null;
+  let usersMap = {};
+  let adminDataMap = {};
+
+  function mergeUsersAndAdminData() {
+    // Merge users and adminData by id
+    const merged = Object.values(usersMap).map(user => {
+      const admin = adminDataMap[user.id] || {};
+      return { ...user, ...admin };
+    });
+    users.value = merged;
+  }
 
   function subscribe() {
     const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
-    unsubscribe = onSnapshot(q, (snap) => {
-      users.value = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (unsubscribeUsers) unsubscribeUsers();
+    if (unsubscribeAdminData) unsubscribeAdminData();
+
+    unsubscribeUsers = onSnapshot(q, (snap) => {
+      usersMap = {};
+      snap.docs.forEach(d => {
+        usersMap[d.id] = { id: d.id, ...d.data() };
+      });
+      mergeUsersAndAdminData();
+    });
+
+    unsubscribeAdminData = onSnapshot(collection(db, 'adminData'), (snap) => {
+      adminDataMap = {};
+      snap.docs.forEach(d => {
+        adminDataMap[d.id] = d.data();
+      });
+      mergeUsersAndAdminData();
     });
   }
 
   async function toggleApproved(id) {
-    const snap = await getDoc(doc(db, 'users', id));
-    const u = snap.data();
-    await updateDoc(doc(db, 'users', id), { approved: !u.approved });
+    const adminSnap = await getDoc(doc(db, 'adminData', id));
+    const adminData = adminSnap.exists() ? adminSnap.data() : {};
+    await setDoc(doc(db, 'adminData', id), { approved: !adminData.approved }, { merge: true });
   }
 
   async function toggleAdmin(id) {
-    const snap = await getDoc(doc(db, 'users', id));
-    const u = snap.data();
-    await updateDoc(doc(db, 'users', id), { isAdmin: !u.isAdmin });
+    const adminSnap = await getDoc(doc(db, 'adminData', id));
+    const adminData = adminSnap.exists() ? adminSnap.data() : {};
+    await setDoc(doc(db, 'adminData', id), { isAdmin: !adminData.isAdmin }, { merge: true });
   }
 
-  onUnmounted(() => unsubscribe && unsubscribe());
+  onUnmounted(() => {
+    if (unsubscribeUsers) unsubscribeUsers();
+    if (unsubscribeAdminData) unsubscribeAdminData();
+  });
 
   return {
     users,
