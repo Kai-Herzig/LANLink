@@ -48,8 +48,6 @@
             <th>Installed by</th>
             <th>Ready Players</th>
             <th>Voted By</th>
-            <th>Vote</th>
-            <th>Installed</th>
             <th v-if="userProfile?.isAdmin">Actions</th>
           </tr>
         </thead>
@@ -111,34 +109,6 @@
                 </span>
               </span>
               <span v-else style="color:#6b7280;">—</span>
-            </td>
-            <td class="g-vote-btn" style="position:relative;">
-              <button
-                v-if="!hasVoted(g)"
-                @click="handleVoteForGame(g.id)"
-                title="Vote"
-                class="vote-icon grey"
-              ></button>
-              <button
-                v-else
-                @click="removeVoteForGame(g.id)"
-                title="Unvote"
-                class="vote-icon blue filled"
-              ></button>
-            </td>
-            <td class="g-installed-btn">
-              <button
-                v-if="user && !installedGameIds.includes(g.id)"
-                @click="markAsInstalled(g.id)"
-                title="Mark as installed"
-                class="checkmark grey"
-              ></button>
-              <button
-                v-if="user && installedGameIds.includes(g.id)"
-                @click="unmarkAsInstalled(g.id)"
-                title="Mark as not installed"
-                class="checkmark green"
-              ></button>
             </td>
             <td v-if="userProfile?.isAdmin" class="g-actions">
               <button class="set-current-btn" @click="setCurrentGame(g.id)">Set as current</button>
