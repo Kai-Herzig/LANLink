@@ -62,67 +62,94 @@
         </thead>
         <tbody>
           <tr v-for="g in sortedGames" :key="g.id">
-            <td class="g-title">{{ g.title }}</td>
-            <td class="g-max">{{ g.maxPlayers || '?' }}</td>
-            <td class="g-platforms" style="display: flex; flex-direction: column; gap: 0.3em;">
-              <span v-for="p in g.platforms || []" :key="p" class="pill" style="white-space: normal; max-width: none; width: fit-content;">{{ p }}</span>
-            </td>
-            <td class="g-votes">{{ g.votesCount }}</td>
-            <td class="g-vote-btn" style="position:relative;">
-              <button
-                v-if="!hasVoted(g)"
-                @click="handleVoteForGame(g.id)"
-                title="Vote"
-                class="vote-icon grey"
-              ></button>
-              <button
-                v-else
-                @click="removeVoteForGame(g.id)"
-                title="Unvote"
-                class="vote-icon blue filled"
-              ></button>
-            </td>
-            <td class="g-installations">
-              {{ g.installedByUsers ? g.installedByUsers.length : 0 }}
-            </td>
-            <td class="g-installed-btn">
-              <button
-                v-if="user && !installedGameIds.includes(g.id)"
-                @click="markAsInstalled(g.id)"
-                title="Mark as installed"
-                class="checkmark grey"
-              ></button>
-              <button
-                v-if="user && installedGameIds.includes(g.id)"
-                @click="unmarkAsInstalled(g.id)"
-                title="Mark as not installed"
-                class="checkmark green"
-              ></button>
-            </td>
-            <td class="g-installed-by">
-              <span v-if="g.installedByUsers && g.installedByUsers.length" class="installed-by-list">
-                <span v-for="user in g.installedByUsers" :key="user.id" class="pill pill-grey">{{ user.displayName || user.email || user.id }}</span>
-              </span>
-              <span v-else style="color:#6b7280;">—</span>
-            </td>
-            <td class="g-ready-players">
-              <span v-if="readyPlayersForGame(g).length" class="ready-list">
-                <span v-for="user in readyPlayersForGame(g)" :key="user.id" class="pill pill-green">{{ user.displayName || user.email || user.id }}</span>
-              </span>
-              <span v-else style="color:#6b7280;">—</span>
-            </td>
-            <td class="g-voted-by">
-              <span v-if="g.votesUsers && g.votesUsers.length" class="voted-list">
-                <span v-for="user in g.votesUsers" :key="user.id" class="pill pill-green">
-                  {{ user.displayName || user.email || user.id }}
+            <template v-if="editingGameId === g.id">
+              <td colspan="12" class="edit-row">
+                <form class="edit-game-form" @submit.prevent="saveEditGame(g)">
+                  <label>Title
+                    <input v-model="editTitle" class="form-input" required minlength="3" maxlength="50" />
+                  </label>
+                  <label>Max Players
+                    <input v-model.number="editMaxPlayers" class="form-input" type="number" min="2" max="100" />
+                  </label>
+                  <label>Subscriptions
+                    <div class="platform-checkboxes">
+                      <label v-for="platform in availablePlatforms" :key="platform" class="checkbox-label">
+                        <input type="checkbox" :value="platform" v-model="editPlatforms" />
+                        {{ platform }}
+                      </label>
+                    </div>
+                  </label>
+                  <div class="form-actions">
+                    <button class="form-submit" type="submit">Save</button>
+                    <button class="form-submit danger" type="button" @click="cancelEditGame">Cancel</button>
+                  </div>
+                </form>
+              </td>
+            </template>
+            <template v-else>
+              <td class="g-title">{{ g.title }}</td>
+              <td class="g-max">{{ g.maxPlayers || '?' }}</td>
+              <td class="g-platforms" style="display: flex; flex-direction: column; gap: 0.3em;">
+                <span v-for="p in g.platforms || []" :key="p" class="pill" style="white-space: normal; max-width: none; width: fit-content;">{{ p }}</span>
+              </td>
+              <td class="g-votes">{{ g.votesCount }}</td>
+              <td class="g-vote-btn" style="position:relative;">
+                <button
+                  v-if="!hasVoted(g)"
+                  @click="handleVoteForGame(g.id)"
+                  title="Vote"
+                  class="vote-icon grey"
+                ></button>
+                <button
+                  v-else
+                  @click="removeVoteForGame(g.id)"
+                  title="Unvote"
+                  class="vote-icon blue filled"
+                ></button>
+              </td>
+              <td class="g-installations">
+                {{ g.installedByUsers ? g.installedByUsers.length : 0 }}
+              </td>
+              <td class="g-installed-btn">
+                <button
+                  v-if="user && !installedGameIds.includes(g.id)"
+                  @click="markAsInstalled(g.id)"
+                  title="Mark as installed"
+                  class="checkmark grey"
+                ></button>
+                <button
+                  v-if="user && installedGameIds.includes(g.id)"
+                  @click="unmarkAsInstalled(g.id)"
+                  title="Mark as not installed"
+                  class="checkmark green"
+                ></button>
+              </td>
+              <td class="g-installed-by">
+                <span v-if="g.installedByUsers && g.installedByUsers.length" class="installed-by-list">
+                  <span v-for="user in g.installedByUsers" :key="user.id" class="pill pill-grey">{{ user.displayName || user.email || user.id }}</span>
                 </span>
-              </span>
-              <span v-else style="color:#6b7280;">—</span>
-            </td>
-            <td v-if="userProfile?.isAdmin" class="g-actions">
-              <button class="set-current-btn" @click="setCurrentGame(g.id)">Set as current</button>
-              <button class="danger" @click="deleteGame(g.id)" title="Delete">🗑️</button>
-            </td>
+                <span v-else style="color:#6b7280;">—</span>
+              </td>
+              <td class="g-ready-players">
+                <span v-if="readyPlayersForGame(g).length" class="ready-list">
+                  <span v-for="user in readyPlayersForGame(g)" :key="user.id" class="pill pill-green">{{ user.displayName || user.email || user.id }}</span>
+                </span>
+                <span v-else style="color:#6b7280;">—</span>
+              </td>
+              <td class="g-voted-by">
+                <span v-if="g.votesUsers && g.votesUsers.length" class="voted-list">
+                  <span v-for="user in g.votesUsers" :key="user.id" class="pill pill-green">
+                    {{ user.displayName || user.email || user.id }}
+                  </span>
+                </span>
+                <span v-else style="color:#6b7280;">—</span>
+              </td>
+              <td v-if="userProfile?.approved" class="g-actions">
+                <button class="edit-btn" @click="startEditGame(g)">Edit</button>
+                <button v-if="userProfile?.isAdmin" class="set-current-btn" @click="setCurrentGame(g.id)">Set as current</button>
+                <button v-if="userProfile?.isAdmin" class="danger" @click="deleteGame(g.id)" title="Delete">🗑️</button>
+              </td>
+            </template>
           </tr>
         </tbody>
       </table>
@@ -132,6 +159,54 @@
 
 
 <script setup>
+// Edit game state
+const editingGameId = ref(null);
+const editTitle = ref('');
+const editMaxPlayers = ref(2);
+const editPlatforms = ref([]);
+
+function startEditGame(game) {
+  editingGameId.value = game.id;
+  editTitle.value = game.title;
+  editMaxPlayers.value = game.maxPlayers;
+  editPlatforms.value = Array.isArray(game.platforms) ? [...game.platforms] : [];
+}
+
+function cancelEditGame() {
+  editingGameId.value = null;
+  editTitle.value = '';
+  editMaxPlayers.value = 2;
+  editPlatforms.value = [];
+}
+
+async function saveEditGame(game) {
+  // Validation (reuse add form logic)
+  const title = editTitle.value.trim();
+  const maxPlayers = Number(editMaxPlayers.value);
+  if (!title || title.length < 3 || title.length > 50) {
+    addMsg.value = 'Title must be 3-50 characters.';
+    return;
+  }
+  if (!/^[A-Za-z0-9 .,'!?:;\-()]+$/.test(title)) {
+    addMsg.value = 'Title contains invalid characters.';
+    return;
+  }
+  if (!maxPlayers || maxPlayers < 2 || maxPlayers > 100) {
+    addMsg.value = 'Max players must be between 2 and 100.';
+    return;
+  }
+  try {
+    await updateDoc(doc(db, 'games', game.id), {
+      title,
+      maxPlayers,
+      platforms: Array.isArray(editPlatforms.value) ? editPlatforms.value : [],
+    });
+    addMsg.value = 'Game updated!';
+    editingGameId.value = null;
+  } catch (e) {
+    addMsg.value = e.message || 'Error updating game.';
+  }
+}
 import { ref, onMounted, computed } from 'vue';
 import { useUsers } from '../composables/useUsers';
 
@@ -309,6 +384,35 @@ const sortedGames = computed(() => {
 
 
 <style scoped>
+  .edit-row {
+    background: #232b3b;
+    padding: 0;
+  }
+  .edit-game-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 18px 10px;
+  }
+  .edit-game-form label {
+    display: flex;
+    flex-direction: column;
+    font-size: 1em;
+    color: #a5b4fc;
+    gap: 6px;
+    min-width: 180px;
+  }
+  .edit-game-form .form-input {
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid #374151;
+    background: #111827;
+    color: #e5e7eb;
+    font-size: 1.08em;
+    margin-top: 2px;
+  }
   .platform-checkboxes {
     display: flex;
     flex-wrap: wrap;
