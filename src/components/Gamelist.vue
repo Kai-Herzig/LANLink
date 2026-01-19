@@ -28,7 +28,7 @@
             <button class="form-submit" type="submit">Add Game</button>
             <button class="form-submit danger" type="button" @click="cancelAddGame">Cancel</button>
           </div>
-          <span class="msg" v-if="addMsg">{{ addMsg }}</span>
+          <span class="msg" v-if="addMsg" :class="{'msg-error': addMsg.startsWith('A game with this title') || addMsg.toLowerCase().includes('error') || addMsg.toLowerCase().includes('invalid') || addMsg.toLowerCase().includes('must be')}">{{ addMsg }}</span>
         </form>
       </div>
 
@@ -296,6 +296,11 @@ async function onAddGame() {
   }
   if (!/^[A-Za-z0-9 .,'!?:;\-()]+$/.test(title)) {
     addMsg.value = 'Title contains invalid characters.';
+    return;
+  }
+  // Duplicate title check (case-insensitive)
+  if (games.value && games.value.some(g => g.title && g.title.trim().toLowerCase() === title.toLowerCase())) {
+    addMsg.value = 'A game with this title already exists.';
     return;
   }
   // Max players: 2-100
@@ -571,10 +576,13 @@ const sortedGames = computed(() => {
 .form-submit:hover {
   background: #1e40af;
 }
-.msg {
-  margin-left: 10px;
-  color: #22c55e;
-}
+  .msg {
+    margin-left: 10px;
+    color: #22c55e;
+  }
+  .msg-error {
+    color: #ef4444;
+  }
 .gamelist-list {
   margin: 1em 0 0 0;
   padding: 0;
