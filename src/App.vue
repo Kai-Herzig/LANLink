@@ -85,14 +85,26 @@ watchEffect(() => {
   display: block;
 }
 .main-content {
-  margin-top: calc(165px + 56px + 32px); /* logo height + navbar height + extra spacing */
-  padding: 0 0.5em 2em 0.5em;
+  margin-top: calc(165px + 56px + 175px); /* logo height + navbar height + extra spacing (increased) */
+  padding: 0 1em 2em 1em;
+  width: 100vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+  height: calc(100vh - (165px + 56px + 32px));
+  overflow-y: auto;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start;
-  min-height: 100vh;
-  box-sizing: border-box;
+}
+</style>
+<style>
+html, body {
+  height: 100vh;
+  overflow: hidden;
 }
 </style>
 

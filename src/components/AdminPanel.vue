@@ -1,7 +1,7 @@
 
 <template>
   <div v-if="userProfile?.isAdmin">
-    <div class="card">
+    <div class="card admin-card">
 
       <table class="gamelist-table adminlist-table">
         <thead>
@@ -174,6 +174,16 @@ async function confirmRemoveInstalled() {
 
 <style scoped>
 /* Import minimalistic table and pill/button styles from Gamelist */
+.admin-card {
+  max-width: 1100px;
+  width: auto;
+  margin: 2em auto 0 auto;
+}
+.adminlist-table {
+  width: auto;
+  min-width: 950px;
+  margin: 0 auto;
+}
 .gamelist-table {
   width: 100%;
   border-collapse: collapse;

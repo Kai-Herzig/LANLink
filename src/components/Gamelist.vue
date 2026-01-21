@@ -32,7 +32,8 @@
         </form>
       </div>
 
-      <table class="gamelist-table">
+      <div class="gamelist-table-container">
+        <table class="gamelist-table">
         <thead>
           <tr>
             <th @click="toggleSort('title')" style="cursor:pointer;">
@@ -152,7 +153,8 @@
             </template>
           </tr>
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   </div>
 </template>
@@ -652,15 +654,24 @@ const sortedGames = computed(() => {
   font-size: 0.98em;
 }
 /* Minimalistic, state-of-the-art table for games list */
-.gamelist-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 1.5em;
-  background: #20283a;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 2px 12px #0002;
-}
+  .gamelist-table-container {
+    display: flex;
+    justify-content: center;
+    width: 100vw;
+    overflow-x: auto;
+    margin-top: 1.5em;
+    box-sizing: border-box;
+  }
+  .gamelist-table {
+    width: auto;
+    min-width: 950px;
+    border-collapse: collapse;
+    background: #20283a;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px #0002;
+    margin: 0 auto;
+  }
 .gamelist-table th, .gamelist-table td {
   padding: 14px 16px;
   text-align: left;
