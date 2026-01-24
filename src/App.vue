@@ -25,7 +25,7 @@ watchEffect(() => {
 
 
 <template>
-  <div>
+  <div class="app-flex-root">
     <div class="fixed-header">
       <header v-if="user && userProfile && userProfile.approved">
         <img src="/lanlink-logo.png" alt="LANLink Logo" class="main-logo" />
@@ -85,7 +85,7 @@ watchEffect(() => {
   display: block;
 }
 .main-content {
-  margin-top: calc(165px + 56px + 175px); /* logo height + navbar height + extra spacing (increased) */
+  margin-top: calc(165px + 56px + 32px); /* logo height + navbar height + small extra spacing */
   padding: 0 1em 2em 1em;
   width: 100vw;
   position: relative;
@@ -100,11 +100,14 @@ watchEffect(() => {
   flex-direction: column;
   align-items: center;
 }
-</style>
-<style>
-html, body {
-  height: 100vh;
-  overflow: hidden;
+
+.app-flex-root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.main-content {
+  flex: 1 0 auto;
 }
 </style>
 
