@@ -58,13 +58,19 @@
             </th>
             <th>Installed</th>
             <th>Installed by</th>
-            <th>Ready Players</th>
+            <th>
+              Ready Players
+              <label style="display: flex; align-items: center; gap: 0.3em; font-weight: normal; font-size: 0.95em;">
+                <input type="checkbox" v-model="showOnlyReadyGames" style="margin:0;" />
+                <span style="user-select:none;">only with ready</span>
+              </label>
+            </th>
             <th>Voted By</th>
             <th v-if="userProfile?.isAdmin">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="g in sortedGames" :key="g.id">
+          <tr v-for="g in filteredGames" :key="g.id">
             <template v-if="editingGameId === g.id">
               <td colspan="12" class="edit-row">
                 <form class="edit-game-form" @submit.prevent="saveEditGame(g)">
@@ -163,6 +169,9 @@
 
 
 <script setup>
+// Toggle for filtering games with at least one ready player
+import { ref, onMounted, computed } from 'vue';
+const showOnlyReadyGames = ref(false);
 // Edit game state
 const editingGameId = ref(null);
 const editTitle = ref('');
@@ -211,7 +220,6 @@ async function saveEditGame(game) {
     addMsg.value = e.message || 'Error updating game.';
   }
 }
-import { ref, onMounted, computed } from 'vue';
 import { useUsers } from '../composables/useUsers';
 
 
@@ -382,6 +390,12 @@ const sortedGames = computed(() => {
     });
   }
   return arr;
+});
+
+// Computed: filter games by ready players if toggle is on
+const filteredGames = computed(() => {
+  if (!showOnlyReadyGames.value) return sortedGames.value;
+  return sortedGames.value.filter(g => readyPlayersForGame(g).length > 0);
 });
 </script>
 
