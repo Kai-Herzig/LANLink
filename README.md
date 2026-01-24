@@ -1,50 +1,43 @@
-
 # 🎮 LANLink
 
-**Version: 1.0.0**
+**Version: 1.3.0**
 
-A modern Vue 3 + Vite web app for managing LAN events, games, and users, powered by Firebase.
+A modern, open-source Vue 3 + Vite web app for managing LAN events, games, and users, powered by Firebase.
 
 ---
 
 ## 🚀 Features
-- User authentication (Firebase Auth)
-- Game list and management
-- Real-time status and timetable
-- Admin panel for approvals
-- Responsive, clean UI
+
+- 🔐 User authentication (Firebase Auth)
+- 🎲 Game list and management
+- ⏰ Real-time status and timetable
+- 🛡️ Admin panel for approvals
+- 📱 Responsive, clean UI
 
 ---
 
-## 🛠️ Getting Started
+## 🛠️ Quick Start
 
-1. **Clone the repo:**
-   ```bash
-   git clone https://github.com/yourusername/lanlink.git
-   cd lanlink
-   ```
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-3. **Set up environment variables:**
-   - Copy `.env.example` to `.env` and fill in your Firebase config.
-
-4. **Run locally:**
-   ```bash
-   npm run dev
-   ```
+```bash
+git clone https://github.com/yourusername/lanlink.git
+cd lanlink
+npm install
+cp .env.example .env # Add your Firebase config
+npm run dev
+```
 
 ---
 
 ## 🌐 Deployment
-- Deploy easily to any static host.
-- Set your Firebase config as environment variables in your deployment dashboard.
+
+- Deploy to any static host (Netlify, Vercel, etc.)
+- Set your Firebase config as environment variables in your deployment dashboard
 
 ---
 
 ## 📄 License
-This project is licensed under the [GNU GPLv3](LICENSE).
+
+Licensed under the [GNU GPLv3](LICENSE).
 
 ---
 
