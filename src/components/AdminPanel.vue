@@ -203,6 +203,9 @@ async function confirmRemoveInstalled() {
   font-weight: 700;
   font-size: 1.08em;
   border-bottom: 1px solid #374151;
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 .gamelist-table tr {
   transition: background 0.2s;
