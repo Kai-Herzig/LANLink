@@ -31,7 +31,9 @@
           <span class="msg" v-if="addMsg">{{ addMsg }}</span>
         </form>
       </div>
+    </div>
 
+    <div class="gamelist-table-section">
       <div class="gamelist-table-container">
         <table class="gamelist-table">
         <thead>
@@ -481,8 +483,16 @@ const sortedGames = computed(() => {
   margin-right: auto;
 }
 .add-game-collapsible {
+  position: fixed;
+    top: calc(165px + 0.7em + 56px + 28px + 1px + 8px); /* logo + margin + navbar + user row + border + small gap */
+  left: 0;
+  width: 100vw;
+  z-index: 100;
+  background: #fff;
+  /* box-shadow removed to eliminate shadow between containers */
   margin-bottom: 0.5em;
   text-align: center;
+  padding: 4px 0 4px 0;
 }
 .add-game-toggle {
   background: linear-gradient(90deg, #2563eb 0%, #1e40af 100%);
@@ -654,13 +664,23 @@ const sortedGames = computed(() => {
   font-size: 0.98em;
 }
 /* Minimalistic, state-of-the-art table for games list */
+  .gamelist-table-section {
+    width: 100vw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1 1 auto;
+  }
   .gamelist-table-container {
     display: flex;
     justify-content: center;
     width: 100vw;
     overflow-x: auto;
-    margin-top: 1.5em;
+    margin-top: 28px; /* reduced height for compact add-game-collapsible */
     box-sizing: border-box;
+    height: calc(100vh - (165px + 0.7em + 56px + 28px + 1px + 60px)); /* header + logo + navbar + user row + border + add-game-collapsible + margin */
+    max-height: calc(100vh - (165px + 0.7em + 56px + 28px + 1px + 60px));
+    /* overflow-y removed to fix sticky header */
   }
   .gamelist-table {
     width: auto;
@@ -672,17 +692,20 @@ const sortedGames = computed(() => {
     box-shadow: 0 2px 12px #0002;
     margin: 0 auto;
   }
-.gamelist-table th, .gamelist-table td {
-  padding: 14px 16px;
-  text-align: left;
-}
-.gamelist-table th {
-  background: #232b3b;
-  color: #a5b4fc;
-  font-weight: 700;
-  font-size: 1.08em;
-  border-bottom: 1px solid #374151;
-}
+  .gamelist-table th, .gamelist-table td {
+    padding: 14px 16px;
+    text-align: left;
+  }
+  .gamelist-table th {
+    background: #232b3b;
+    color: #a5b4fc;
+    font-weight: 700;
+    font-size: 1.08em;
+    border-bottom: 1px solid #374151;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
 .gamelist-table tr {
   transition: background 0.2s;
 }
