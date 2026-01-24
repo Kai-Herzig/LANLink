@@ -383,9 +383,12 @@ function openPauseBox() {
 .current-game-glass .icon {
   font-size: 2.2em;
   color: #fbbf24;
-  filter: drop-shadow(0 0 8px #fbbf24aa);
-  display: flex;
-  align-items: center;
+  .card.status-card {
+    max-width: 700px;
+    width: auto;
+    margin: 2em auto 0 auto;
+    /* ...existing code... */
+  }
 }
 .current-game-glass .label {
   font-weight: 600;

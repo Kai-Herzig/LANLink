@@ -28,11 +28,14 @@
             <button class="form-submit" type="submit">Add Game</button>
             <button class="form-submit danger" type="button" @click="cancelAddGame">Cancel</button>
           </div>
-          <span class="msg" v-if="addMsg">{{ addMsg }}</span>
+          <span class="msg" v-if="addMsg" :class="{'msg-error': addMsg.startsWith('A game with this title') || addMsg.toLowerCase().includes('error') || addMsg.toLowerCase().includes('invalid') || addMsg.toLowerCase().includes('must be')}">{{ addMsg }}</span>
         </form>
       </div>
+    </div>
 
-      <table class="gamelist-table">
+    <div class="gamelist-table-section">
+      <div class="gamelist-table-container">
+        <table class="gamelist-table">
         <thead>
           <tr>
             <th @click="toggleSort('title')" style="cursor:pointer;">
@@ -55,13 +58,19 @@
             </th>
             <th>Installed</th>
             <th>Installed by</th>
-            <th>Ready Players</th>
+            <th>
+              Ready Players
+              <label style="display: flex; align-items: center; gap: 0.3em; font-weight: normal; font-size: 0.95em;">
+                <input type="checkbox" v-model="showOnlyReadyGames" style="margin:0;" />
+                <span style="user-select:none;">only with ready</span>
+              </label>
+            </th>
             <th>Voted By</th>
             <th v-if="userProfile?.isAdmin">Actions</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="g in sortedGames" :key="g.id">
+          <tr v-for="g in filteredGames" :key="g.id">
             <template v-if="editingGameId === g.id">
               <td colspan="12" class="edit-row">
                 <form class="edit-game-form" @submit.prevent="saveEditGame(g)">
@@ -152,13 +161,17 @@
             </template>
           </tr>
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   </div>
 </template>
 
 
 <script setup>
+// Toggle for filtering games with at least one ready player
+import { ref, onMounted, computed } from 'vue';
+const showOnlyReadyGames = ref(false);
 // Edit game state
 const editingGameId = ref(null);
 const editTitle = ref('');
@@ -207,7 +220,6 @@ async function saveEditGame(game) {
     addMsg.value = e.message || 'Error updating game.';
   }
 }
-import { ref, onMounted, computed } from 'vue';
 import { useUsers } from '../composables/useUsers';
 
 
@@ -298,6 +310,11 @@ async function onAddGame() {
     addMsg.value = 'Title contains invalid characters.';
     return;
   }
+  // Duplicate title check (case-insensitive)
+  if (games.value && games.value.some(g => g.title && g.title.trim().toLowerCase() === title.toLowerCase())) {
+    addMsg.value = 'A game with this title already exists.';
+    return;
+  }
   // Max players: 2-100
   if (!maxPlayers || maxPlayers < 2 || maxPlayers > 100) {
     addMsg.value = 'Max players must be between 2 and 100.';
@@ -378,6 +395,12 @@ const sortedGames = computed(() => {
     });
   }
   return arr;
+});
+
+// Computed: filter games by ready players if toggle is on
+const filteredGames = computed(() => {
+  if (!showOnlyReadyGames.value) return sortedGames.value;
+  return sortedGames.value.filter(g => readyPlayersForGame(g).length > 0);
 });
 </script>
 
@@ -479,8 +502,16 @@ const sortedGames = computed(() => {
   margin-right: auto;
 }
 .add-game-collapsible {
+  position: fixed;
+    top: calc(165px + 0.7em + 56px + 28px + 1px + 8px); /* logo + margin + navbar + user row + border + small gap */
+  left: 0;
+  width: 100vw;
+  z-index: 100;
+  background: #fff;
+  /* box-shadow removed to eliminate shadow between containers */
   margin-bottom: 0.5em;
   text-align: center;
+  padding: 4px 0 4px 0;
 }
 .add-game-toggle {
   background: linear-gradient(90deg, #2563eb 0%, #1e40af 100%);
@@ -571,10 +602,13 @@ const sortedGames = computed(() => {
 .form-submit:hover {
   background: #1e40af;
 }
-.msg {
-  margin-left: 10px;
-  color: #22c55e;
-}
+  .msg {
+    margin-left: 10px;
+    color: #22c55e;
+  }
+  .msg-error {
+    color: #ef4444;
+  }
 .gamelist-list {
   margin: 1em 0 0 0;
   padding: 0;
@@ -652,26 +686,48 @@ const sortedGames = computed(() => {
   font-size: 0.98em;
 }
 /* Minimalistic, state-of-the-art table for games list */
-.gamelist-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 1.5em;
-  background: #20283a;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 2px 12px #0002;
-}
-.gamelist-table th, .gamelist-table td {
-  padding: 14px 16px;
-  text-align: left;
-}
-.gamelist-table th {
-  background: #232b3b;
-  color: #a5b4fc;
-  font-weight: 700;
-  font-size: 1.08em;
-  border-bottom: 1px solid #374151;
-}
+  .gamelist-table-section {
+    width: 100vw;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1 1 auto;
+  }
+  .gamelist-table-container {
+    display: flex;
+    justify-content: center;
+    width: 100vw;
+    overflow-x: auto;
+    margin-top: 28px; /* reduced height for compact add-game-collapsible */
+    box-sizing: border-box;
+    height: calc(100vh - (165px + 0.7em + 56px + 28px + 1px + 60px)); /* header + logo + navbar + user row + border + add-game-collapsible + margin */
+    max-height: calc(100vh - (165px + 0.7em + 56px + 28px + 1px + 60px));
+    /* overflow-y removed to fix sticky header */
+  }
+  .gamelist-table {
+    width: auto;
+    min-width: 950px;
+    border-collapse: collapse;
+    background: #20283a;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px #0002;
+    margin: 0 auto;
+  }
+  .gamelist-table th, .gamelist-table td {
+    padding: 14px 16px;
+    text-align: left;
+  }
+  .gamelist-table th {
+    background: #232b3b;
+    color: #a5b4fc;
+    font-weight: 700;
+    font-size: 1.08em;
+    border-bottom: 1px solid #374151;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
 .gamelist-table tr {
   transition: background 0.2s;
 }
